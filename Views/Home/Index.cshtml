@@ -1,0 +1,203 @@
+﻿@{
+    ViewData["Title"] = "Actors List";
+}
+
+<h1>IMDB Scraper - Actors</h1>
+
+<p id="section-status">status: <span id="status">@ViewData["SyncStatus"] (@ViewData["ActorsCount"] actors)</span></p><br/>
+
+<p id="section-progress" hidden="true">progress: <span id="progress">@ViewData["SyncProgress"]%</span></p><br/>
+
+<p id="section-task" hidden="true">current task: <span id="task">@ViewData["CurrentTask"]</span></p><br/>
+
+<p id="section-StartSync">
+    <span>This will add only the missing actors in local db (will not update info of existing actors):</span><br/>
+    <input type="button" id="btnStartSync" value="Start Sync"><br/><br/>
+</p>
+
+<p id="section-StopSync" hidden="true">
+    <span>This will stop the sync job and keep the actors that were already synced:</span><br/>
+    <input type="button" id="btnStopSync" value="Stop Sync"><br/><br/>
+</p>
+
+<p id="section-Reset">
+    <span>This will empty the local db and reload all the actors:</span><br/>
+    <input type="button" id="btnReset" value="Reset"><br/><br/>
+</p>
+
+<table id="dvActors">
+    <caption>My Actors List</caption>
+    <tr class="header">
+        <th scope="col">Name</th>
+        <th scope="col">Gender</th>
+        <th scope="col">Role</th>
+        <th scope="col">Birth Date</th>
+        <th scope="col">Photo</th>
+        <th scope="col"></th>
+    </tr>
+</table>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script type="text/javascript" language="JavaScript">
+        var syncInProgress = @ViewData["IsSyncing"];
+        $(document).ready(function () {
+            refreshList();
+            window.setInterval(getStatus, 1000);
+
+            function getStatus() {
+                $.ajax({
+                    type: "GET",
+                    url: "/Actors/GetStatus",
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (response) {
+                        $("#status").text(response.status + ' (' + response.actorsCount + ' actors)');
+
+                        if (response.status == 'idle') {
+                            syncInProgress = false;
+                            $("#progress").text("");
+                            $("#section-progress").attr('hidden', true);
+                            
+                            $("#task").text("");
+                            $("#section-task").attr('hidden', true);
+                            
+                            $('#section-StartSync').removeAttr('hidden');
+                            $('#section-StopSync').attr('hidden', true);
+                
+                        }
+                        else if (response.status == 'sync') {
+                            syncInProgress = true;
+                            $("#progress").text(response.progress + '%');
+                            $("#section-progress").removeAttr('hidden');
+                            
+                            $("#task").text(response.currentTask);
+                            $("#section-task").removeAttr('hidden');
+
+                            $('#section-StartSync').attr('hidden', true);
+                            $('#section-StopSync').removeAttr('hidden');
+
+                            refreshList();
+                        }
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });  
+            }
+            function deleteActor(id) {
+                
+                $.ajax({
+                    type: "DELETE",
+                    url: "/Actors/Delete/" + id,
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (response) {
+                        
+                        var dvActors = $("#dvActors");
+                        var actor = $("#actor-" + id);
+                        actor.remove();
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });
+            
+            }
+
+            function startSync() {
+                //syncInProgress = true;
+                $.ajax({
+                    type: "POST",
+                    url: "/Actors/StartSync",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });
+            }
+
+            function stopSync() {
+                $.ajax({
+                    type: "POST",
+                    url: "/Actors/StopSync",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });
+            }
+
+            function refreshList() {
+                $.ajax({
+                    type: "GET",
+                    url: "/Actors/GetList",
+                    contentType: "application/json",
+                    dataType: "json",
+                    success: function (response) {
+                        var dvActors = $("#dvActors");
+                        $('.actor-row').remove();
+
+                        $.each(response, function (i, actor) {
+                            var aDelete = $('<input>')
+                                .attr('type', 'button')
+                                .attr('id', 'btnDelete-' + actor.id)
+                                .attr('value', 'Delete');
+
+                            $(aDelete).on('click', function () { 
+                                deleteActor(actor.id); 
+                            });
+
+                            var $tr = $('<tr>')
+                                .attr('id', 'actor-' + actor.id)
+                                .attr('class', 'actor-row')
+                                .append($('<td>').append(aDelete))
+                                .append($('<th>').attr('scope', 'row').text(actor.fullName))
+                                .append($('<td>').text(actor.gender))
+                                .append($('<td>').text(actor.role))
+                                .append($('<td>').text(actor.born))
+                                .append($('<td>').append($('<img>').attr('src', actor.imageUrl)))
+                                .appendTo(dvActors);
+                        });
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });
+            }
+
+            $('#btnReset').on('click', function () {
+                //syncInProgress = true;
+                $.ajax({
+                    type: "POST",
+                    url: "/Actors/Reset",
+                    contentType: "application/json; charset=utf-8",
+                    dataType: "json",
+                    success: function (response) {
+                        /*syncInProgress = false;
+                        var dvActors = $("#dvActors");
+                        dvActors.empty();
+                        $.each(response, function (i, item) {
+                            var $tr = $('<li>').append(item).appendTo(dvActors);
+                        });*/
+                    },
+                    failure: function (response) {
+                        alert(response);
+                    }
+                });
+            });
+
+            $('#btnStartSync').on('click', startSync);
+            $('#btnStopSync').on('click', stopSync);
+
+        });
+    </script>
+}
