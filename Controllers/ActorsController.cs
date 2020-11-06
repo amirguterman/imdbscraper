@@ -105,7 +105,7 @@ namespace ImdbListingExercise.Controllers
             }
             catch(Exception e)
             {
-                this.logger.LogError($"Could not reset actors list", e);
+                this.logger.LogError($"Could not start sync", e);
                 return StatusCode(500);
             }
         }
@@ -120,7 +120,7 @@ namespace ImdbListingExercise.Controllers
             }
             catch(Exception e)
             {
-                this.logger.LogError($"Could not reset actors list", e);
+                this.logger.LogError($"Could not stop sync", e);
                 return StatusCode(500);
             }
         }
